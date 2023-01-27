@@ -28,7 +28,7 @@ pool.connect((err) => {
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithEmail = function(email) {
+const getUserWithEmail = function (email) {
   const queryString = `
   SELECT *
   FROM users
@@ -52,7 +52,7 @@ exports.getUserWithEmail = getUserWithEmail;
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithId = function(id) {
+const getUserWithId = function (id) {
   const queryString = `SELECT * FROM users WHERE id = $1;`;
   const values = [id];
 
@@ -131,13 +131,13 @@ const getAllProperties = function(options, limit = 10) {
   const queryParams = [];
   // 2 Start the query with all information that comes before the WHERE clause.
   let queryString = `SELECT properties.*, avg(property_reviews.rating) as average_rating FROM properties JOIN property_reviews ON properties.id = property_reviews.property_id `;
-  
+
   // 3 Check if a city, owner_id or price_per_night has been passed in as an option. Add them to the params array and create a WHERE clause
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += `WHERE city LIKE $${queryParams.length} `;
   }
-  
+
   if (options.owner_id) {
     queryParams.push(options.owner_id);
     if (queryParams.length === 1) {
@@ -146,7 +146,7 @@ const getAllProperties = function(options, limit = 10) {
       queryString += `AND owner_id = $${queryParams.length} `;
     }
   }
-  
+
   if (options.minimum_price_per_night && options.maximum_price_per_night) {
     queryParams.push(options.minimum_price_per_night * 100, options.maximum_price_per_night * 100);
     if (queryParams.length === 2) {
@@ -155,7 +155,7 @@ const getAllProperties = function(options, limit = 10) {
       queryString += `AND cost_per_night >= $${queryParams.length - 1} AND cost_per_night <= $${queryParams.length} `;
     }
   }
-  
+
   // 4 Add any query that comes after the WHERE clause.
   queryString += `GROUP BY properties.id `;
 
@@ -167,14 +167,14 @@ const getAllProperties = function(options, limit = 10) {
   queryParams.push(limit);
   queryString += `ORDER BY cost_per_night
   LIMIT $${queryParams.length};`;
-  
+
   // 5 Console log everything just to make sure we've done it right.
   console.log(queryString, queryParams);
-  
+
   // 6 Run the query.
   return pool.query(queryString, queryParams)
-  .then(res => res.rows);
-  };
+    .then(res => res.rows);
+};
 
 exports.getAllProperties = getAllProperties;
 
@@ -184,10 +184,28 @@ exports.getAllProperties = getAllProperties;
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function(property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+const addProperty = function (property) {
+  const queryString = `
+  INSERT INTO properties (owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, parking_spaces, number_of_bathrooms, number_of_bedrooms, country, street, city, province, post_code)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+  RETURNING * ;`;
+
+  const values = [
+    property.owner_id,
+    property.title,
+    property.description,
+    property.thumbnail_photo_url,
+    property.cover_photo_url,
+    property.cost_per_night,
+    property.parking_spaces,
+    property.number_of_bathrooms,
+    property.number_of_bedrooms,
+    property.country,
+    property.street,
+    property.city,
+    property.province,
+    property.post_code,
+  ];
+  return pool.query(queryString, values).then((res) => res.rows[0]);
 }
 exports.addProperty = addProperty;
